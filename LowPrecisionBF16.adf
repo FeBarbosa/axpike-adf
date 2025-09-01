@@ -1,0 +1,7 @@
+DM ReadLowPrecisionBF16();
+
+approximation LOWPRECISIONBF16 {
+    initial = off;
+    regbank_read = ReadLowPrecisionBF16();
+    regbank_write = ReadLowPrecisionBF16();
+}

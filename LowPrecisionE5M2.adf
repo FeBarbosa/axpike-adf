@@ -1,0 +1,7 @@
+DM ReadLowPrecisionE5M2();
+
+approximation LOWPRECISIONE5M2 {
+    initial = off;
+    regbank_read = ReadLowPrecisionE5M2();
+    regbank_write = ReadLowPrecisionE5M2();
+}
