@@ -16,21 +16,22 @@ DM ReadLowPrecisionE5M2(processor_t* p, source_t* source, void* data) {
         // printf("FP32: %f\n", *fpRealValue);
 
         // force exponent of fp32 to max value of fp16 if greather than max(E) of fp16
-        if (exponent > exponent_max && exponent < 255 ){ // if exponent is equal 255, propagates FP32 NaN or Infinity
+        // Exponent overflow -> force max_exponent
+        if (exponent > exponent_max && exponent < 255){ // if exponent is equal 255, propagates FP32 NaN or Infinity
             exponent = exponent_max;
             fpValue &= ~(static_cast<uint32_t>(0xFF) << 23);
             fpValue |= (exponent << 23);
             // mantain only the 10 MSBs of mantissa
             fpValue &= ~((1u << (23 - mantissa_size)) - 1);
-        }
+        }// Exponent unverflow -> force min_exponent
         else if(exponent < exponent_min && exponent > 0){
             exponent = exponent_min;
             fpValue &= ~(static_cast<uint32_t>(0xFF) << 23);
             fpValue |= (exponent << 23);
             // mantain only the 10 MSBs of mantissa
             fpValue &= ~((1u << (23 - mantissa_size)) - 1);
-        }
-        else if(exponent < exponent_max){
+        }// exponent between accpetable values and denormal
+        else if((exponent >= exponent_min && exponent <= exponent_max) || exponent == 0){
             fpValue &= ~((1u << (23 - mantissa_size)) - 1);
         }
         *fpreg = fpValue;

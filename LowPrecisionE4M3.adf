@@ -1,10 +1,11 @@
-DM ReadLowPrecisionE5M2();
+DM ReadLowPrecisionE4M3();
 
 group fp32_readwrite {
     instruction = {flw, fsw, fmadd_s, fmsub_s, fnmsub_s,
                     fnmadd_s, fadd_s, fsub_s, fmul_s, fdiv_s,
                     fsqrt_s, fsgnj_s, fsgnjn_s, fsgnjx_s, fmin_s,
                     fmax_s
+
     };
 }
 
@@ -16,22 +17,23 @@ group fp32_read {
 
 group fp32_write {
     instruction = {fcvt_s_w, fcvt_s_wu, fmv_w_x, fcvt_s_l,
-                    fcvt_s_lu, fcvt_s_d};
+                    fcvt_s_lu, fcvt_s_d
+    };
 }
 
-approximation LOWPRECISIONE5M2 {
+approximation LOWPRECISIONE4M3 {
     initial = off;
 
     group fp32_readwrite {
-        regbank_read = ReadLowPrecisionE5M2();
-        regbank_write = ReadLowPrecisionE5M2();
+        regbank_read = ReadLowPrecisionE4M3();
+        regbank_write = ReadLowPrecisionE4M3();
     }
 
     group fp32_read {
-        regbank_read = ReadLowPrecisionE5M2();
+        regbank_read = ReadLowPrecisionE4M3();
     }
 
     group fp32_write {
-        regbank_write = ReadLowPrecisionE5M2();
+        regbank_write = ReadLowPrecisionE4M3();
     }
 }

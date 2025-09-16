@@ -1,7 +1,33 @@
 DM ReadLowPrecisionBF16();
 
+group fp32_readwrite {
+    instruction = {flw, fsw, fmadd_s, fmsub_s, fnmsub_s, fnmadd_s, fadd_s, fsub_s, fmul_s, fdiv_s, fsqrt_s, fsgnj_s, fsgnjn_s, fsgnjx_s, fmin_s, fmax_s};
+}
+
+group fp32_read {
+    instruction = {fcvt_w_s, fcvt_wu_s, fmv_x_w, feq_s, flt_s,
+                    fle_s, fclass_s, fcvt_l_s, fcvt_lu_s, fcvt_d_s
+    };
+}
+
+group fp32_write {
+    instruction = {fcvt_s_w, fcvt_s_wu, fmv_w_x, fcvt_s_l,
+    fcvt_s_lu, fcvt_s_d};
+}
+
 approximation LOWPRECISIONBF16 {
     initial = off;
-    regbank_read = ReadLowPrecisionBF16();
-    regbank_write = ReadLowPrecisionBF16();
+
+    group fp32_readwrite {
+        regbank_read = ReadLowPrecisionBF16();
+        regbank_write = ReadLowPrecisionBF16();
+    }
+
+    group fp32_read {
+        regbank_read = ReadLowPrecisionBF16();
+    }
+
+    group fp32_write {
+        regbank_write = ReadLowPrecisionBF16();
+    }
 }
