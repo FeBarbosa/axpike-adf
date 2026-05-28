@@ -1,6 +1,4 @@
-// extern "C" {
-// #include "adele/adf/LowPrecisionSimulation/typeConvertion.c"
-// }
+#include "adele/adf/LowPrecisionSimulation/typeConvertion.h"
 
 DM ReadLowPrecisionBF16(processor_t* p, source_t* source, void* data) {
     if(source->type == source_t::REGBANK && source->name == "FPR"){// && source->width == 32){

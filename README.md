@@ -10,18 +10,19 @@ approximations are implemented by the files with the `LowPrecision` prefix:
 - `LowPrecisionE4M3.adf` and `LowPrecisionE4M3.cc`
 
 The current implementation simulates low-precision floating-point behavior by
-quantizing FP32 register values through `flexfloat`. It does not store packed
-FP16, BF16, E5M2, or E4M3 values in the floating-point register file. Instead,
-it stores a normal 32-bit float whose numeric value has been converted through
-the selected lower-precision format and then converted back to FP32.
+quantizing FP32 register values. FP16 now uses the SoftFloat round-trip
+`FP32 -> FP16 -> FP32`, while BF16, E5M2, and E4M3 still use `flexfloat`.
+The register file does not store packed FP16, BF16, E5M2, or E4M3 values.
+Instead, it stores a normal 32-bit float whose numeric value has been converted
+through the selected lower-precision format and then converted back to FP32.
 
 ## Format Mapping
 
-Each model calls `typeSimulationFF(exponent_size, mantissa_size, value)`:
+Each model calls one of the conversion helpers below:
 
 | Approximation | Call | Meaning |
 | --- | --- | --- |
-| FP16 | `typeSimulationFF(5, 10, value)` | 5 exponent bits, 10 mantissa bits |
+| FP16 | `typeSimulationSoftFloatFP16(value)` | SoftFloat FP32 -> FP16 -> FP32 |
 | BF16 | `typeSimulationFF(8, 7, value)` | 8 exponent bits, 7 mantissa bits |
 | E5M2 | `typeSimulationFF(5, 2, value)` | 5 exponent bits, 2 mantissa bits |
 | E4M3 | `typeSimulationFF(4, 3, value)` | 4 exponent bits, 3 mantissa bits |
@@ -35,27 +36,25 @@ uint32_t* fpreg = (uint32_t*)(data);
 
 ## Conversion Path
 
-The conversion helper is implemented in
-`LowPrecisionSimulation/typeConvertion.c`:
+The FP16 SoftFloat conversion helper is implemented in
+`LowPrecisionSimulation/typeConvertionSoftFloat.cc`:
 
 ```cpp
-template<uint32_t E, uint32_t M>
-uint32_t typeSimulationFF_impl(uint32_t value)
+uint32_t typeSimulationSoftFloatFP16(uint32_t value)
 {
-    float* fpreg = (float*)(&value);
-    flexfloat<E, M> fpFlex = *fpreg;
-
-    *fpreg = (float)fpFlex;
-    return value;
+    float32_t in{value};
+    float16_t half = f32_to_f16(in);
+    float32_t out = f16_to_f32(half);
+    return out.v;
 }
 ```
 
 The steps are:
 
 1. Take the 32-bit FPR value as raw bits.
-2. Reinterpret those bits as a C/C++ `float`.
-3. Convert the value to `flexfloat<E, M>`.
-4. Convert the `flexfloat` value back to `float`.
+2. Reinterpret those bits as a SoftFloat `float32_t`.
+3. Convert the value to `float16_t`.
+4. Convert the `float16_t` value back to `float32_t`.
 5. Return the resulting FP32 bit pattern.
 
 This means the register still contains FP32 bits, but the represented numeric
@@ -119,7 +118,7 @@ r_q = quantize_to_E5M2(r)
 FPR[rd] = r_q stored as FP32 bits
 ```
 
-The same pattern is used for FP16, BF16, and E4M3, changing only the
+The same pattern is used for BF16, E5M2, and E4M3, changing only the
 `flexfloat<E, M>` format used for quantization.
 
 ## Important Limitations
@@ -134,5 +133,4 @@ Important consequences:
 - Spike still performs the arithmetic operation using its normal FP32 logic.
 - Low precision is modeled at FPR read/write boundaries.
 - Rounding, overflow, underflow, NaN, and infinity behavior are delegated to
-  the `flexfloat` conversion used by `typeSimulationFF`.
-
+  SoftFloat for FP16 and to `flexfloat` for BF16, E5M2, and E4M3.

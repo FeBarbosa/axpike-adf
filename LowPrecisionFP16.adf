@@ -16,8 +16,7 @@ group fp32_read {
 
 group fp32_write {
     instruction = {fcvt_s_w, fcvt_s_wu, fmv_w_x, fcvt_s_l,
-                    fcvt_s_lu, fcvt_s_d
-    };
+                    fcvt_s_lu, fcvt_s_d};
 }
 
 approximation LOWPRECISIONFP16 {
