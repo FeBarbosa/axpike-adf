@@ -17,4 +17,10 @@ uint32_t typeSimulationFF(
         uint32_t value
 );
 
+uint64_t typeSimulationFF64(
+        uint32_t exponent_size,
+        uint32_t mantissa_size,
+        uint64_t value
+);
+
 #endif // TYPE_CONVERTION_H
