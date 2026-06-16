@@ -181,11 +181,13 @@ Important consequences:
 - Rounding, overflow, underflow, NaN, and infinity behavior are delegated to
   SoftFloat for FP16 and to `flexfloat` for BF16, E5M2, and E4M3.
 
-## Temporary FP16/E5M2 Conversion Trace
+## Opt-In FP16/E5M2 Conversion Trace
 
 `LowPrecisionSimulation/LowPrecisionTrace.cc` implements optional conversion
 tracing for the FP16 and E5M2 hooks. Tracing is disabled by default and does
-not change the simulated numeric behavior.
+not change the simulated numeric behavior. The trace is intended as a debug
+facility for low-precision conversion analysis and only emits rows when the
+matching AxPIKE approximation is active.
 
 The traced hooks are:
 
@@ -238,15 +240,20 @@ Example FP16 expf probe from the LeNet repository:
 
 ```bash
 cd /home/felipe/Research/repos/lenet-riscv-cpp-inference
-AXPIKE_TRACE_LP_CONVERSIONS=1 AXPIKE_TRACE_LP_LIMIT=2000 AXPIKE_TRACE_LP_FILE=/tmp/fp16_lp.log AXPIKE_TRACE_LP_FORMAT=fp16 AXPIKE_TRACE_LP_WIDTH=all axpike pk app expf-probe expf-probe 10 fp16
+AXPIKE_TRACE_LP_CONVERSIONS=1 AXPIKE_TRACE_LP_LIMIT=2000 AXPIKE_TRACE_LP_FILE=/tmp/fp16_lp.log AXPIKE_TRACE_LP_FORMAT=fp16 AXPIKE_TRACE_LP_WIDTH=all axpike --adele-activate=LOWPRECISIONFP16 pk app expf-probe expf-probe 10 fp16
 ```
 
 Example E5M2 expf probe:
 
 ```bash
 cd /home/felipe/Research/repos/lenet-riscv-cpp-inference
-AXPIKE_TRACE_LP_CONVERSIONS=1 AXPIKE_TRACE_LP_LIMIT=2000 AXPIKE_TRACE_LP_FILE=/tmp/e5m2_lp.log AXPIKE_TRACE_LP_FORMAT=e5m2 AXPIKE_TRACE_LP_WIDTH=all axpike pk app expf-probe expf-probe 10 e5m2
+AXPIKE_TRACE_LP_CONVERSIONS=1 AXPIKE_TRACE_LP_LIMIT=2000 AXPIKE_TRACE_LP_FILE=/tmp/e5m2_lp.log AXPIKE_TRACE_LP_FORMAT=e5m2 AXPIKE_TRACE_LP_WIDTH=all axpike --adele-activate=LOWPRECISIONE5M2 pk app expf-probe expf-probe 10 e5m2
 ```
+
+If the target program activates approximations internally through AxPIKE CSRs or
+HTIF commands, the explicit `--adele-activate=...` option is not required. If no
+trace file is produced, first confirm that the requested approximation is active
+before the floating-point instructions under investigation execute.
 
 When analyzing the log, compare FP32 and FP64 rows around the same PC or
 instruction id. For the `expf()` investigation, rows with `width=FP64` show
