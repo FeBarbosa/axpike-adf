@@ -4,7 +4,7 @@
 #include <cstdint>
 
 #pragma once
-/* undefine any nasty INLINE macro defined by other headers (SoftFloat) */
+/* undefine any nasty INLINE macro defined by other headers */
 #ifdef INLINE
 #  undef INLINE
 #endif

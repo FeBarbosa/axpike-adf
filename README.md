@@ -10,9 +10,8 @@ approximations are implemented by the files with the `LowPrecision` prefix:
 - `LowPrecisionE4M3.adf` and `LowPrecisionE4M3.cc`
 
 The current active ADF wiring simulates low-precision floating-point behavior
-by quantizing FP32 and FP64 register values. FP16 uses SoftFloat round-trips
-(`FP32 -> FP16 -> FP32` and `FP64 -> FP16 -> FP64`), while BF16, E5M2, and
-E4M3 use `flexfloat`.
+by quantizing FP32 and FP64 register values. FP16, BF16, E5M2, and E4M3 all use
+`flexfloat` with the format parameters shown below.
 The register file does not store packed FP16, BF16, E5M2, or E4M3 values.
 Instead, it stores normal FP32 or FP64 values whose numeric values have been
 converted through the selected lower-precision format and then converted back
@@ -24,55 +23,66 @@ Each model calls one of the conversion helpers below:
 
 | Approximation | FP32 call | FP64 call | Meaning |
 | --- | --- | --- | --- |
-| FP16 | `typeSimulationSoftFloatFP16(uint32_t)` | `typeSimulationSoftFloatFP16(uint64_t)` | SoftFloat round-trip through FP16 |
+| FP16 | `typeSimulationFF(5, 10, value)` | `typeSimulationFF64(5, 10, value)` | 5 exponent bits, 10 mantissa bits |
 | BF16 | `typeSimulationFF(8, 7, value)` | `typeSimulationFF64(8, 7, value)` | 8 exponent bits, 7 mantissa bits |
 | E5M2 | `typeSimulationFF(5, 2, value)` | `typeSimulationFF64(5, 2, value)` | 5 exponent bits, 2 mantissa bits |
 | E4M3 | `typeSimulationFF(4, 3, value)` | `typeSimulationFF64(4, 3, value)` | 4 exponent bits, 3 mantissa bits |
 
-For example, `LowPrecisionE5M2.cc` applies:
+For example, `LowPrecisionFP16.cc` applies:
 
 ```cpp
 uint32_t* fpreg = (uint32_t*)(data);
-*fpreg = typeSimulationFF(5, 2, *fpreg);
+uint32_t before = *fpreg;
+uint32_t after = typeSimulationFF(5, 10, before);
+traceLowPrecisionConversionFP32("FP16", p, source, before, after);
+*fpreg = after;
 ```
 
 ## Conversion Path
 
-The FP16 SoftFloat FP32 conversion helper is implemented in
-`LowPrecisionSimulation/typeConvertionSoftFloat.cc`:
+The FlexFloat FP32 conversion helper is implemented in
+`LowPrecisionSimulation/typeConvertion.c`:
 
 ```cpp
-uint32_t typeSimulationSoftFloatFP16(uint32_t value)
+template<uint32_t E, uint32_t M>
+uint32_t typeSimulationFF_impl(uint32_t value)
 {
-    float32_t in{value};
-    float16_t half = f32_to_f16(in);
-    float32_t out = f16_to_f32(half);
-    return out.v;
+    float fpreg;
+    std::memcpy(&fpreg, &value, sizeof(fpreg));
+    flexfloat<E, M> fpFlex = fpreg;
+
+    fpreg = (float)fpFlex;
+    std::memcpy(&value, &fpreg, sizeof(value));
+    return value;
 }
 ```
 
 The steps are:
 
 1. Take the 32-bit FPR value as raw bits.
-2. Reinterpret those bits as a SoftFloat `float32_t`.
-3. Convert the value to `float16_t`.
-4. Convert the `float16_t` value back to `float32_t`.
+2. Reinterpret those bits as a host `float`.
+3. Convert the value through the selected `flexfloat<E, M>` format.
+4. Convert the quantized value back to host `float`.
 5. Return the resulting FP32 bit pattern.
 
 This means the register still contains FP32 bits, but the represented numeric
 value has been rounded and range-limited according to the selected low-precision
 format.
 
-The FP64 overload follows the same idea, but preserves a 64-bit architectural
-result:
+The FP64 overload follows the same idea with host `double`, preserving a 64-bit
+architectural result:
 
 ```cpp
-uint64_t typeSimulationSoftFloatFP16(uint64_t value)
+template<uint32_t E, uint32_t M>
+uint64_t typeSimulationFF64_impl(uint64_t value)
 {
-    float64_t in{value};
-    float16_t half = f64_to_f16(in);
-    float64_t out = f16_to_f64(half);
-    return out.v;
+    double fpreg;
+    std::memcpy(&fpreg, &value, sizeof(fpreg));
+    flexfloat<E, M> fpFlex = fpreg;
+
+    fpreg = (double)fpFlex;
+    std::memcpy(&value, &fpreg, sizeof(value));
+    return value;
 }
 ```
 
@@ -179,7 +189,7 @@ Important consequences:
   logic.
 - Low precision is modeled at FPR read/write boundaries.
 - Rounding, overflow, underflow, NaN, and infinity behavior are delegated to
-  SoftFloat for FP16 and to `flexfloat` for BF16, E5M2, and E4M3.
+  `flexfloat` for FP16, BF16, E5M2, and E4M3.
 
 ## Opt-In FP16/E5M2 Conversion Trace
 
