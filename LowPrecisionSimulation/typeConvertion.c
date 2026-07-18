@@ -26,6 +26,7 @@ uint64_t typeSimulationFF64_impl(uint64_t value)
 }
 
 /* Supported Types
+    FP32 -> 8, 23
     FP16 -> 5, 10
     BF16 -> 8, 7
     E5M2 -> 5, 2
@@ -39,6 +40,9 @@ uint32_t typeSimulationFF(
     switch(exponent_size){
         case 8:
             switch(mantissa_size){
+                case 23:
+                    // FP32
+                    return typeSimulationFF_impl<8, 23>(value);
                 case 7:
                     // BF16
                     return typeSimulationFF_impl<8, 7>(value);
@@ -75,6 +79,9 @@ uint64_t typeSimulationFF64(
     switch(exponent_size){
         case 8:
             switch(mantissa_size){
+                case 23:
+                    // FP32
+                    return typeSimulationFF64_impl<8, 23>(value);
                 case 7:
                     // BF16
                     return typeSimulationFF64_impl<8, 7>(value);
